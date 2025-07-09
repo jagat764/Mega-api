@@ -1,7 +1,7 @@
 {
   "name": "mega-api",
   "version": "1.0.0",
-  "description": "MEGA link downloader API",
+  "description": "MEGA folder downloader API with subfolder support",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
