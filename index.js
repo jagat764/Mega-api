@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const mega = require('megajs');
+const folder = mega.Folder.fromURL(url);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
