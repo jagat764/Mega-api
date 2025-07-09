@@ -1,7 +1,7 @@
 const express = require('express');
 const { file } = require('megajs');
 const cors = require('cors');
-const fetch = require('node-fetch'); // MEGA folder metadata
+const fetch = require('node-fetch');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,26 +12,25 @@ app.get('/', (req, res) => {
   res.send('✅ MEGA Folder Downloader API is running.');
 });
 
-// 📁 List files in MEGA folder recursively
+// 📁 List all files (recursive) from MEGA folder
 app.get('/api/folder', async (req, res) => {
-  let url = req.query.url;
-  if (!url || !url.includes('mega.nz/folder/')) {
-    return res.status(400).json({ error: 'Invalid or missing ?url parameter' });
+  const inputUrl = req.query.url;
+
+  if (!inputUrl || !inputUrl.includes('mega.nz/folder/')) {
+    return res.status(400).json({ error: 'Missing or invalid ?url=' });
   }
 
   try {
-    // ✂️ Strip trailing /folder/... or /file/... parts
-    url = url.split('/folder/')[0];
-    url = url.split('/file/')[0];
-
-    // 🔍 Extract folder ID and key
-    const match = url.match(/folder\/([a-zA-Z0-9_-]+)#([a-zA-Z0-9_-]+)/);
+    // ✅ Extract folder ID and key from full URL
+    const match = /folder\/([^#]+)#(.+)/.exec(inputUrl);
     if (!match) {
       return res.status(400).json({ error: 'Invalid MEGA folder URL format' });
     }
 
     const [_, folderId, key] = match;
+    const cleanedUrl = `https://mega.nz/folder/${folderId}#${key}`;
 
+    // 🔗 MEGA API request
     const apiUrl = `https://g.api.mega.co.nz/cs?id=${Date.now()}&n=${folderId}`;
     const body = JSON.stringify([{ a: 'f', c: 1 }]);
 
@@ -45,38 +44,35 @@ app.get('/api/folder', async (req, res) => {
     const nodes = data[0]?.f;
 
     if (!Array.isArray(nodes)) {
-      return res.status(500).json({ error: 'Invalid MEGA response format' });
+      return res.status(500).json({ error: 'Invalid MEGA folder response' });
     }
 
-    // 🗺 Build a map of nodeId => node
     const map = {};
     nodes.forEach(n => (map[n.h] = n));
 
-    // 🔄 Recursive folder walker
+    // 🔄 Recursive walker
     const walk = (parentId, path = '') => {
       return nodes
         .filter(n => n.p === parentId)
         .flatMap(n => {
           const name = n.name || n.n;
           if (n.t === 1) {
-            // Folder
             return walk(n.h, `${path}${name}/`);
           } else {
-            // File
             return {
               name: name,
               path: `${path}${name}`,
               size: n.s,
-              download_url: `/api/folder-download?url=${encodeURIComponent(url)}&file=${encodeURIComponent(name)}`
+              download_url: `/api/folder-download?url=${encodeURIComponent(cleanedUrl)}&file=${encodeURIComponent(name)}`
             };
           }
         });
     };
 
-    const rootNode = nodes.find(n => n.h === folderId || (n.t === 1 && !n.p));
-    if (!rootNode) return res.status(404).json({ error: 'Root folder not found' });
+    const root = nodes.find(n => n.h === folderId || (n.t === 1 && !n.p));
+    if (!root) return res.status(404).json({ error: 'Root folder not found' });
 
-    const files = walk(rootNode.h);
+    const files = walk(root.h);
 
     res.json({
       folder_id: folderId,
@@ -88,13 +84,13 @@ app.get('/api/folder', async (req, res) => {
   }
 });
 
-// 📥 Download file from folder
+// 📥 Download file
 app.get('/api/folder-download', async (req, res) => {
   const url = req.query.url;
   const filename = req.query.file;
 
   if (!url || !filename) {
-    return res.status(400).json({ error: 'Missing ?url or ?file parameter' });
+    return res.status(400).json({ error: 'Missing ?url or ?file' });
   }
 
   try {
@@ -112,5 +108,5 @@ app.get('/api/folder-download', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ MEGA API running at http://localhost:${PORT}`);
+  console.log(`✅ MEGA API running on http://localhost:${PORT}`);
 });
