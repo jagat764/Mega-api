@@ -11,10 +11,8 @@ app.get('/', (req, res) => {
   res.send('✅ MEGA Folder API is running.');
 });
 
-// ✅ Folder listing using megajs
 app.get('/api/folder', async (req, res) => {
   const url = req.query.url;
-
   console.log("➡️ /api/folder");
   console.log("🟡 Incoming URL:", url);
 
@@ -23,11 +21,8 @@ app.get('/api/folder', async (req, res) => {
   }
 
   try {
-    const folder = mega.Folder.fromURL(url);
-    console.log("📦 Folder loaded from URL");
-
+    const folder = mega.Folder.fromURL(url); // ✅ Correct usage
     await folder.loadAttributes();
-    console.log("✅ Folder attributes loaded");
 
     const files = folder.children.map(f => ({
       name: f.name,
@@ -50,7 +45,6 @@ app.get('/api/folder', async (req, res) => {
   }
 });
 
-// ✅ Download individual file from folder
 app.get('/api/download', async (req, res) => {
   const url = req.query.url;
   const name = req.query.name;
