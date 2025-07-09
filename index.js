@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { Folder } = require('megajs');
+const mega = require('megajs');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -19,39 +19,48 @@ app.get('/api/folder', async (req, res) => {
   console.log('🟡 Folder URL:', url);
   console.log('🔑 Decryption Key:', key);
 
-  if (!url || !key || !url.includes('mega.nz/folder/')) {
-    return res.status(400).json({ error: 'Missing or invalid folder URL or key' });
+  if (!url || !key) {
+    return res.status(400).json({ error: 'Missing folder URL or decryption key' });
   }
 
-  // Extract folder ID only (without key)
   const folderIdMatch = url.match(/mega\.nz\/folder\/([\w-]+)/);
-  if (!folderIdMatch || folderIdMatch.length < 2) {
+  if (!folderIdMatch) {
     return res.status(400).json({ error: 'Invalid MEGA folder URL format' });
   }
 
   const folderId = folderIdMatch[1];
-  const fullUrl = `https://mega.nz/folder/${folderId}#${key}`;
+  const fullLink = `https://mega.nz/folder/${folderId}#${key}`;
 
   try {
-    const folder = Folder.fromURL(fullUrl);
-    const files = await folder.load();
+    const storage = mega.Storage.fromURL(fullLink);
+    storage.on('ready', () => {
+      const files = Object.values(storage.files).map(file => ({
+        name: file.name,
+        size: file.size,
+        downloadId: file.downloadId,
+        downloadUrl: `https://mega.nz/file/${file.downloadId}#${file.key}`
+      }));
 
-    const result = files.map(file => ({
-      name: file.name,
-      size: file.size,
-      downloadId: file.downloadId,
-      downloadUrl: `https://mega.nz/file/${file.downloadId}#${file.key}`
-    }));
-
-    res.json({
-      folderId,
-      fileCount: result.length,
-      files: result
+      res.json({
+        folderId,
+        fileCount: files.length,
+        files
+      });
     });
+
+    storage.on('error', (err) => {
+      console.error('❌ Error loading MEGA folder:', err);
+      res.status(500).json({
+        error: 'Failed to read MEGA folder',
+        details: err.message
+      });
+    });
+
+    storage.load();
   } catch (err) {
-    console.error('❌ Error loading folder:', err);
+    console.error('❌ Unexpected Error:', err);
     res.status(500).json({
-      error: 'Failed to read folder',
+      error: 'Unexpected failure',
       details: err.message
     });
   }
