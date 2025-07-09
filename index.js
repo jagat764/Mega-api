@@ -1,5 +1,6 @@
 const express = require('express');
-const { Folder } = require('megajs');
+const { file } = require('megajs');
+const Folder = require('megajs').Folder; // ✅ Correct way to import Folder
 const cors = require('cors');
 
 const app = express();
@@ -7,8 +8,9 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 
+// Root endpoint
 app.get('/', (req, res) => {
-  res.send('✅ MEGA Folder Downloader API is running.');
+  res.send('✅ MEGA Folder Downloader API is live.');
 });
 
 // 🔍 List all files in a MEGA folder
@@ -32,7 +34,7 @@ app.get('/api/folder', async (req, res) => {
   }
 });
 
-// 📥 Download specific file from MEGA folder
+// 📥 Download a specific file from a MEGA folder by name
 app.get('/api/folder-download', async (req, res) => {
   const url = req.query.url;
   const filename = req.query.file;
@@ -45,13 +47,13 @@ app.get('/api/folder-download', async (req, res) => {
     const folder = new Folder({ url });
     await folder.loadAttributes();
 
-    const file = folder.children.find(f => f.name === filename);
-    if (!file) return res.status(404).json({ error: "File not found in folder" });
+    const fileNode = folder.children.find(f => f.name === filename);
+    if (!fileNode) return res.status(404).json({ error: "File not found in folder" });
 
-    res.setHeader('Content-Disposition', `attachment; filename="${file.name}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileNode.name}"`);
     res.setHeader('Content-Type', 'application/octet-stream');
 
-    const stream = file.download();
+    const stream = fileNode.download();
     stream.pipe(res);
   } catch (err) {
     res.status(500).json({ error: "Failed to download file", details: err.toString() });
@@ -59,5 +61,5 @@ app.get('/api/folder-download', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ API running at http://localhost:${PORT}`);
+  console.log(`✅ MEGA API running at http://localhost:${PORT}`);
 });
