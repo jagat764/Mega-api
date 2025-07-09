@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { Folder } = require('megajs');
+
 const app = express();
 const PORT = process.env.PORT || 10000;
 
@@ -19,18 +20,20 @@ app.get('/api/folder', async (req, res) => {
     return res.status(400).json({ error: 'Invalid MEGA folder URL' });
   }
 
-  const folderRegex = /mega\.nz\/folder\/([a-zA-Z0-9-_]+)#([a-zA-Z0-9-_]+)/;
+  // ✅ Updated regex that supports valid MEGA folder URLs
+  const folderRegex = /mega\.nz\/folder\/([\w-]+)#([\w-]+)/;
   const match = url.match(folderRegex);
 
-  if (!match) {
+  if (!match || match.length !== 3) {
     return res.status(400).json({ error: 'Invalid MEGA folder URL format' });
   }
 
   const folderId = match[1];
   const folderKey = match[2];
+  const fullUrl = `https://mega.nz/folder/${folderId}#${folderKey}`;
 
   try {
-    const folder = Folder.fromURL(`https://mega.nz/folder/${folderId}#${folderKey}`);
+    const folder = Folder.fromURL(fullUrl);
     const files = await folder.load();
 
     const result = files.map(file => ({
