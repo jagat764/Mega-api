@@ -1,7 +1,7 @@
 {
   "name": "mega-api",
   "version": "1.0.0",
-  "description": "MEGA folder API using megajs fork",
+  "description": "MEGA folder downloader API",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
