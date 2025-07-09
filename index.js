@@ -1,62 +1,73 @@
 const express = require('express');
 const { file } = require('megajs');
-const Folder = require('megajs').Folder; // ✅ Correct way to import Folder
 const cors = require('cors');
+const fetch = require('node-fetch'); // For folder metadata requests
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 
-// Root endpoint
 app.get('/', (req, res) => {
-  res.send('✅ MEGA Folder Downloader API is live.');
+  res.send('✅ MEGA Folder Downloader API is running.');
 });
 
-// 🔍 List all files in a MEGA folder
+// 🔍 List files in MEGA folder
 app.get('/api/folder', async (req, res) => {
   const url = req.query.url;
-  if (!url) return res.status(400).json({ error: "Missing ?url= parameter" });
+  if (!url || !url.includes('mega.nz/folder/')) {
+    return res.status(400).json({ error: 'Invalid or missing ?url parameter' });
+  }
 
   try {
-    const folder = new Folder({ url });
-    await folder.loadAttributes();
+    const match = url.match(/folder\/([a-zA-Z0-9_-]+)#([a-zA-Z0-9_-]+)/);
+    if (!match) return res.status(400).json({ error: 'Invalid MEGA folder URL' });
 
-    const files = folder.children.map(child => ({
-      name: child.name,
-      size: child.size,
-      download_url: `/api/folder-download?url=${encodeURIComponent(url)}&file=${encodeURIComponent(child.name)}`
+    const [_, folderId, key] = match;
+    const apiUrl = `https://g.api.mega.co.nz/cs?id=${Date.now()}&n=${folderId}`;
+    const body = JSON.stringify([{ a: 'f', c: 1 }]);
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      body,
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const data = await response.json();
+    const files = data[0]?.f?.filter(item => item.t === 0) || [];
+
+    const results = files.map(f => ({
+      name: f.name || f.n,
+      size: f.s,
+      download_url: `/api/folder-download?url=${encodeURIComponent(url)}&file=${encodeURIComponent(f.name)}`
     }));
 
-    res.json({ folder_name: folder.name || "Unnamed", files });
+    res.json({ folder_id: folderId, files: results });
   } catch (err) {
-    res.status(500).json({ error: "Failed to read folder", details: err.toString() });
+    res.status(500).json({ error: 'Failed to read folder', details: err.toString() });
   }
 });
 
-// 📥 Download a specific file from a MEGA folder by name
+// 📥 Download a file by name from folder
 app.get('/api/folder-download', async (req, res) => {
   const url = req.query.url;
   const filename = req.query.file;
 
   if (!url || !filename) {
-    return res.status(400).json({ error: "Missing ?url= or ?file= parameter" });
+    return res.status(400).json({ error: 'Missing ?url= or ?file= parameter' });
   }
 
   try {
-    const folder = new Folder({ url });
-    await folder.loadAttributes();
+    const megaFile = file({ name: filename, url });
+    await megaFile.loadAttributes();
 
-    const fileNode = folder.children.find(f => f.name === filename);
-    if (!fileNode) return res.status(404).json({ error: "File not found in folder" });
-
-    res.setHeader('Content-Disposition', `attachment; filename="${fileNode.name}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${megaFile.name}"`);
     res.setHeader('Content-Type', 'application/octet-stream');
 
-    const stream = fileNode.download();
+    const stream = megaFile.download();
     stream.pipe(res);
   } catch (err) {
-    res.status(500).json({ error: "Failed to download file", details: err.toString() });
+    res.status(500).json({ error: 'Failed to download file', details: err.toString() });
   }
 });
 
