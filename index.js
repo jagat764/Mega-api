@@ -8,29 +8,29 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 
+// Root endpoint
 app.get('/', (req, res) => {
   res.send('✅ MEGA Folder Downloader API is running.');
 });
 
-// 📁 List all files (recursive) from MEGA folder
+// 📁 Recursive folder listing
 app.get('/api/folder', async (req, res) => {
-  const inputUrl = req.query.url;
+  const rawUrl = req.query.url;
 
-  if (!inputUrl || !inputUrl.includes('mega.nz/folder/')) {
-    return res.status(400).json({ error: 'Missing or invalid ?url=' });
+  if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.includes('mega.nz/folder/')) {
+    return res.status(400).json({ error: 'Missing or invalid ?url parameter' });
   }
 
+  // ✅ Match folder ID and decryption key
+  const match = rawUrl.match(/folder\/([a-zA-Z0-9_-]+)#([a-zA-Z0-9_-]+)/);
+  if (!match) {
+    return res.status(400).json({ error: 'Invalid MEGA folder URL format' });
+  }
+
+  const [_, folderId, key] = match;
+  const cleanUrl = `https://mega.nz/folder/${folderId}#${key}`;
+
   try {
-    // ✅ Extract folder ID and key from full URL
-    const match = /folder\/([^#]+)#(.+)/.exec(inputUrl);
-    if (!match) {
-      return res.status(400).json({ error: 'Invalid MEGA folder URL format' });
-    }
-
-    const [_, folderId, key] = match;
-    const cleanedUrl = `https://mega.nz/folder/${folderId}#${key}`;
-
-    // 🔗 MEGA API request
     const apiUrl = `https://g.api.mega.co.nz/cs?id=${Date.now()}&n=${folderId}`;
     const body = JSON.stringify([{ a: 'f', c: 1 }]);
 
@@ -44,13 +44,12 @@ app.get('/api/folder', async (req, res) => {
     const nodes = data[0]?.f;
 
     if (!Array.isArray(nodes)) {
-      return res.status(500).json({ error: 'Invalid MEGA folder response' });
+      return res.status(500).json({ error: 'Invalid MEGA response' });
     }
 
     const map = {};
     nodes.forEach(n => (map[n.h] = n));
 
-    // 🔄 Recursive walker
     const walk = (parentId, path = '') => {
       return nodes
         .filter(n => n.p === parentId)
@@ -63,7 +62,7 @@ app.get('/api/folder', async (req, res) => {
               name: name,
               path: `${path}${name}`,
               size: n.s,
-              download_url: `/api/folder-download?url=${encodeURIComponent(cleanedUrl)}&file=${encodeURIComponent(name)}`
+              download_url: `/api/folder-download?url=${encodeURIComponent(cleanUrl)}&file=${encodeURIComponent(name)}`
             };
           }
         });
@@ -84,7 +83,7 @@ app.get('/api/folder', async (req, res) => {
   }
 });
 
-// 📥 Download file
+// 📥 File downloader
 app.get('/api/folder-download', async (req, res) => {
   const url = req.query.url;
   const filename = req.query.file;
@@ -108,5 +107,5 @@ app.get('/api/folder-download', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ MEGA API running on http://localhost:${PORT}`);
+  console.log(`✅ MEGA API running at http://localhost:${PORT}`);
 });
