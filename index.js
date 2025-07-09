@@ -13,24 +13,24 @@ app.get('/', (req, res) => {
 
 app.get('/api/folder', async (req, res) => {
   const url = req.query.url;
+  const key = req.query.key;
+
   console.log('➡️ /api/folder request received');
   console.log('🟡 Folder URL:', url);
+  console.log('🔑 Decryption Key:', key);
 
-  if (!url || !url.includes('mega.nz/folder/')) {
-    return res.status(400).json({ error: 'Invalid MEGA folder URL' });
+  if (!url || !key || !url.includes('mega.nz/folder/')) {
+    return res.status(400).json({ error: 'Missing or invalid folder URL or key' });
   }
 
-  // ✅ Updated regex that supports valid MEGA folder URLs
-  const folderRegex = /mega\.nz\/folder\/([\w-]+)#([\w-]+)/;
-  const match = url.match(folderRegex);
-
-  if (!match || match.length !== 3) {
+  // Extract folder ID only (without key)
+  const folderIdMatch = url.match(/mega\.nz\/folder\/([\w-]+)/);
+  if (!folderIdMatch || folderIdMatch.length < 2) {
     return res.status(400).json({ error: 'Invalid MEGA folder URL format' });
   }
 
-  const folderId = match[1];
-  const folderKey = match[2];
-  const fullUrl = `https://mega.nz/folder/${folderId}#${folderKey}`;
+  const folderId = folderIdMatch[1];
+  const fullUrl = `https://mega.nz/folder/${folderId}#${key}`;
 
   try {
     const folder = Folder.fromURL(fullUrl);
