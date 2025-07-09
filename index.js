@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { Folder, file } = require('megajs');
+const mega = require('megajs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,7 +23,7 @@ app.get('/api/folder', async (req, res) => {
   }
 
   try {
-    const folder = Folder.fromURL(url);
+    const folder = mega.Folder.fromURL(url);
     console.log("📦 Folder loaded from URL");
 
     await folder.loadAttributes();
@@ -60,7 +60,7 @@ app.get('/api/download', async (req, res) => {
   }
 
   try {
-    const folder = Folder.fromURL(url);
+    const folder = mega.Folder.fromURL(url);
     await folder.loadAttributes();
 
     const target = folder.children.find(f => f.name === name);
