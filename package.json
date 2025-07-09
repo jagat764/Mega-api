@@ -1,7 +1,7 @@
 {
   "name": "mega-api",
   "version": "1.0.0",
-  "description": "MEGA folder downloader API with recursive subfolder support",
+  "description": "MEGA folder API using megajs",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -9,7 +9,6 @@
   "dependencies": {
     "express": "^4.18.2",
     "megajs": "^1.1.1",
-    "cors": "^2.8.5",
-    "node-fetch": "^2.6.11"
+    "cors": "^2.8.5"
   }
 }
