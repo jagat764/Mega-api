@@ -1,14 +1,14 @@
 {
   "name": "mega-api",
   "version": "1.0.0",
-  "description": "MEGA folder API using megajs",
+  "description": "MEGA folder API using megajs fork",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "megajs": "^1.1.1",
+    "megajs": "github:tonikelope/megajs",
     "cors": "^2.8.5"
   }
 }
