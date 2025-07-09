@@ -21,7 +21,7 @@ app.get('/api/folder', async (req, res) => {
   }
 
   try {
-    const folder = mega.Folder.fromURL(url); // ✅ Use Folder from forked megajs
+    const folder = mega.Folder.fromURL(url);
     await folder.loadAttributes();
 
     const files = folder.children.map(file => ({
